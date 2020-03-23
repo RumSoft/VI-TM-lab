@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float ratio);
+bool Diffuse(Mat& img1, Mat& img2, Mat& outputImg, float ratio);
 
 #define WINDOW_NAME "przenikanie"
 #define KEY_ESC 27
@@ -20,17 +20,13 @@ int main()
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
 	// Pobranie obrazu
-	Mat imagePeppers = imread("peppers.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-	Mat imageFruits = imread("fruits.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat imagePeppers = imread("peppers.jpg", CV_LOAD_IMAGE_COLOR);
+	Mat imageFruits = imread("fruits.jpg", CV_LOAD_IMAGE_COLOR);
 
 	// Utworzenie obiektu przechowującego obraz, który będzie wynikiem przenikania
 	Mat imagesDiffusion = imagePeppers.clone();
 
-	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
-	Mat_<uchar> peppersPixels = imagePeppers;
-	Mat_<uchar> fruitsPixels = imageFruits;
-	Mat_<uchar> imagesDiffusionPixels = imagesDiffusion;
-
+		
 	auto forceStop = false;
 	do
 	{
@@ -38,14 +34,14 @@ int main()
 		auto change = 0.02f;
 		for (ratio = .0f; ratio <= 1; ratio += change)
 		{
-			if (Diffuse(peppersPixels, fruitsPixels, imagesDiffusionPixels, ratio) == true)
+			if (Diffuse(imagePeppers, imageFruits, imagesDiffusion, ratio) == true)
 				goto end;
 
 			imshow(WINDOW_NAME, imagesDiffusion);
 		}
 		for (ratio = 1.0f; ratio >= 0; ratio -= change)
 		{
-			if (Diffuse(peppersPixels, fruitsPixels, imagesDiffusionPixels, ratio) == true)
+			if (Diffuse(imagePeppers, imageFruits, imagesDiffusion, ratio) == true)
 				goto end;
 
 			imshow(WINDOW_NAME, imagesDiffusion);
@@ -60,11 +56,19 @@ end:
 	return 0;
 }
 
-bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float ratio)
+bool Diffuse(Mat& img1, Mat& img2, Mat& outputImg, float ratio)
 {
-	for (auto x = 0; x < img1.rows; x++)
-		for (auto y = 0; y < img1.cols; y++)
-			outputImg[x][y] = img1[x][y] * ratio + img2[x][y] * (1 - ratio);
+	for (auto y = 0; y < img1.rows; y++)
+		for (auto x = 0; x < img1.cols; x++) {
+			auto im1pix = img1.at<Vec3b>(y,x);
+			auto im2pix = img2.at<Vec3b>(y,x);
+			auto outpix = outputImg.at<Vec3b>(y, x);
+
+			outpix[0] = im1pix[0] * ratio + im2pix[0] * (1 - ratio);
+			outpix[1] = im1pix[1] * ratio + im2pix[1] * (1 - ratio);
+			outpix[2] = im1pix[2] * ratio + im2pix[2] * (1 - ratio);
+			outputImg.at<Vec3b>(y, x) = outpix;
+		}
 
 	auto key = cvWaitKey(1);
 	switch (key)
