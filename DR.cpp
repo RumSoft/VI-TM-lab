@@ -56,9 +56,12 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 	for (auto y = 0; y < peppersPixels.rows; y++)
 		for (auto x = 0; x < peppersPixels.cols; x++)
 		{
+			int hy = peppersPixels.rows / 2;
+			int hx = peppersPixels.cols / 2;
+			
 			float rot = degrees % 360 * 2 * M_PI / 180;
-			int xx = x * cos(rot) - y * sin(rot);
-			int yy = x * sin(rot) + y * cos(rot);
+			int xx = (x - hx) * cos(rot) - (y - hy) * sin(rot) + hx;
+			int yy = (x - hx) * sin(rot) + (y - hy) * cos(rot) + hy;
 			if (yy >= peppersPixels.rows
 				|| xx >= peppersPixels.cols
 				|| yy < 0
