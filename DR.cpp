@@ -1,4 +1,6 @@
-﻿#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
+﻿#define _USE_MATH_DEFINES
+
+#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>
 #include <stdio.h>
@@ -8,79 +10,71 @@
 using namespace std;
 using namespace cv;
 
-bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float ratio);
-float Clamp(float value, float min, float max);
+bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels);
 
-#define WINDOW_NAME "przenikanie"
-#define KEY_ESC 27
-#define KEY_ENTER 13
-#define KEY_UP 2490368
-#define KEY_DOWN 2621440
+#define WINDOW_NAME "Obracanie obrazu"
 
-float change = 0.02f;
+int degrees = 0;
 int main()
 {
 	// Stworzenie okna w którym przechwycone obrazy będą wyświetlane
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
 	// Pobranie obrazu
-	Mat im1 = imread("peppers.jpg", CV_LOAD_IMAGE_COLOR);
-	Mat im2 = imread("fruits.jpg", CV_LOAD_IMAGE_COLOR);
+	Mat im1 = imread("peppers.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
-	// Utworzenie obiektu przechowującego obraz, który będzie wynikiem przenikania
-	Mat im3 = im1.clone();
+	// Utworzenie obiektu przechowującego obraz, który będzie obracany
+	Mat im2 = im1.clone();
 
+	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
 	Mat_<uchar> im1pix = im1;
 	Mat_<uchar> im2pix = im2;
-	Mat_<uchar> im3pix = im3;
 
-	auto forceStop = false;
-	float ratio = .0f;
-	int dir = 1;
-	do
+	while (1)
 	{
-		ratio = Clamp(ratio + change * dir, 0, 1);
-		if (ratio >= 1 || ratio <= 0)
-			dir = -dir;
+		// Obracanie obrazu
+		if (Rotate(im1pix, im2pix))
+			break;
 
-		forceStop = Diffuse(im1pix, im2pix, im3pix, ratio);
-		imshow(WINDOW_NAME, im3);
-	} while (!forceStop);
+		// Wyświetlanie obrazu
+		imshow(WINDOW_NAME, im2);
+	}
 
 	// Niszczenie okna
 	cvDestroyWindow(WINDOW_NAME);
 	return 0;
 }
 
-//hard-limit wartosci na wyjsciu z funkcji miedzy min i max
-float Clamp(float value, float min, float max)
+bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 {
-	if (value >= max) return max;
-	if (value <= min) return min;
-	return value;
-}
+	
+	/* Funkcja obracająca obraz peppersPixels o liczbę stopni zwiększaną o 1 przy każdym kolejnym wywołaniu.
+	Kiedy liczba stopni dochodzi do 360, następuje powtórzenie cyklu - ustawienie liczbę stopni na 0.
+	Wynikowy obraz (obrócony) zostaje zapisywany w rotatedPeppersPixels. */
+	degrees += 1;
+	
+	for (auto y = 0; y < peppersPixels.rows; y++)
+		for (auto x = 0; x < peppersPixels.cols; x++)
+		{
+			float rot = degrees % 360 * 2 * M_PI / 180;
+			int xx = x * cos(rot) - y * sin(rot);
+			int yy = x * sin(rot) + y * cos(rot);
+			if (yy >= peppersPixels.rows
+				|| xx >= peppersPixels.cols
+				|| yy < 0
+				|| xx < 0) {
+				rotatedPeppersPixels[y][x] = 0;
+				continue;
+			}
+			rotatedPeppersPixels[y][x] = peppersPixels[yy][xx];
+		}
 
-bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float ratio)
-{
-	for (auto y = 0; y < img1.rows; y++)
-		for (auto x = 0; x < img1.cols; x++)
-			outputImg[y][x] = img1[y][x] * ratio + img2[y][x] * (1 - ratio);
 
-	const auto key = waitKeyEx(1);
-	switch (key)
-	{
-	case KEY_ENTER:
-	case KEY_ESC:
+	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
+	char key = cvWaitKey(1);
+	if (key == 27 || key == 13/*Esc lub Enter*/)
 		return true;
-	case KEY_UP:
-		change = Clamp(change * 1.15f, 0.001f, 0.1);
-		cout << change << endl;
-		break;
-	case KEY_DOWN:
-		change = Clamp(change * 0.85f, 0.001f, 0.1);
-		cout << change << endl;
-		break;
-	}
 
 	return false;
 }
+
