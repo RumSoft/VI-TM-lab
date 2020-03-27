@@ -78,6 +78,7 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 	// dla kazdego pikselu obrazu wynikowego oblicza się piksel z obrazu źródłowego
 	// unikamy w ten sposób błędów precyzji liczb zmiennoprzecinkowych, gdyż każdy piksel obrazu wynikowego
 	// będzie posiadał na pewno jakąś wartość
+	// #nomakeup #nofilter
 	medianBlur(rotatedPeppersPixels, rotatedPeppersPixels, 3);
 	
 	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
