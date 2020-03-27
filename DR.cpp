@@ -15,6 +15,9 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels);
 #define WINDOW_NAME "Obracanie obrazu"
 
 int degrees = 0;
+int change = 1;
+int dir = 1;
+
 int main()
 {
 	// Stworzenie okna w którym przechwycone obrazy będą wyświetlane
@@ -30,9 +33,10 @@ int main()
 	Mat_<uchar> im1pix = im1;
 	Mat_<uchar> im2pix = im2;
 
-	while (1)
+	while (true)
 	{
 		// Obracanie obrazu
+
 		if (Rotate(im1pix, im2pix))
 			break;
 
@@ -47,25 +51,27 @@ int main()
 
 bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 {
-	
+	degrees += dir * change;
+	float rot = degrees % 360 * 2 * M_PI / 180;
+
+
 	/* Funkcja obracająca obraz peppersPixels o liczbę stopni zwiększaną o 1 przy każdym kolejnym wywołaniu.
 	Kiedy liczba stopni dochodzi do 360, następuje powtórzenie cyklu - ustawienie liczbę stopni na 0.
 	Wynikowy obraz (obrócony) zostaje zapisywany w rotatedPeppersPixels. */
-	degrees += 1;
-	
+
 	for (auto y = 0; y < peppersPixels.rows; y++)
 		for (auto x = 0; x < peppersPixels.cols; x++)
 		{
 			int hy = peppersPixels.rows / 2;
 			int hx = peppersPixels.cols / 2;
-			
-			float rot = degrees % 360 * 2 * M_PI / 180;
+
 			int xx = (x - hx) * cos(rot) - (y - hy) * sin(rot) + hx;
 			int yy = (x - hx) * sin(rot) + (y - hy) * cos(rot) + hy;
 			if (yy >= peppersPixels.rows
 				|| xx >= peppersPixels.cols
 				|| yy < 0
-				|| xx < 0) {
+				|| xx < 0)
+			{
 				rotatedPeppersPixels[y][x] = 0;
 				continue;
 			}
@@ -80,12 +86,17 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 	// będzie posiadał na pewno jakąś wartość
 	// #nomakeup #nofilter
 	medianBlur(rotatedPeppersPixels, rotatedPeppersPixels, 3);
-	
+
 	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
 	char key = cvWaitKey(1);
 	if (key == 27 || key == 13/*Esc lub Enter*/)
 		return true;
+	if (key == ' ') dir = -dir;
+	if (key == '+') change += 1;
+	if (key == '-') change -= 1;
+
+	//nie szybciej niz 10, nie wolniej niz 1...
+	change = change >= 10 ? 10 : change <= 1 ? 1 : change;
 
 	return false;
 }
-
