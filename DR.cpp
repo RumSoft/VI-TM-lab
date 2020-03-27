@@ -33,20 +33,19 @@ int main()
 	Mat_<uchar> im1pix = im1;
 	Mat_<uchar> im2pix = im2;
 	Mat_<uchar> im3pix = im3;
-		
+
 	auto forceStop = false;
 	float ratio = .0f;
-	
+	int dir = 1;
 	do
 	{
-		ratio = Clamp(ratio + change, 0, 1);
+		ratio = Clamp(ratio + change * dir, 0, 1);
 		if (ratio >= 1 || ratio <= 0)
-			change = -change;
-		
-		forceStop = Diffuse(im1pix, im2pix, im3pix, ratio);		
+			dir = -dir;
+
+		forceStop = Diffuse(im1pix, im2pix, im3pix, ratio);
 		imshow(WINDOW_NAME, im3);
-	}
-	while (!forceStop);
+	} while (!forceStop);
 
 	// Niszczenie okna
 	cvDestroyWindow(WINDOW_NAME);
@@ -66,7 +65,7 @@ bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float
 	for (auto y = 0; y < img1.rows; y++)
 		for (auto x = 0; x < img1.cols; x++)
 			outputImg[y][x] = img1[y][x] * ratio + img2[y][x] * (1 - ratio);
-		
+
 	const auto key = waitKeyEx(1);
 	switch (key)
 	{
@@ -74,10 +73,12 @@ bool Diffuse(Mat_<uchar>& img1, Mat_<uchar>& img2, Mat_<uchar>& outputImg, float
 	case KEY_ESC:
 		return true;
 	case KEY_UP:
-		change = Clamp(change * 1.1f, 0.001f, 0.1);
+		change = Clamp(change * 1.15f, 0.001f, 0.1);
+		cout << change << endl;
 		break;
 	case KEY_DOWN:
-		change = Clamp(change * 0.9f, 0.001f, 0.1);
+		change = Clamp(change * 0.85f, 0.001f, 0.1);
+		cout << change << endl;
 		break;
 	}
 
