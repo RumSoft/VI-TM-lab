@@ -72,7 +72,14 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 			rotatedPeppersPixels[y][x] = peppersPixels[yy][xx];
 		}
 
-
+	// nie potrzeba filtra, program z zad1 i zad2 nie miał dziur
+	// wyjasnienie:
+	// zamiast obraz źródłowy przetwarzać i uzyskiwać obrócone piksele zastosowano odwrotną operację:
+	// dla kazdego pikselu obrazu wynikowego oblicza się piksel z obrazu źródłowego
+	// unikamy w ten sposób błędów precyzji liczb zmiennoprzecinkowych, gdyż każdy piksel obrazu wynikowego
+	// będzie posiadał na pewno jakąś wartość
+	medianBlur(rotatedPeppersPixels, rotatedPeppersPixels, 3);
+	
 	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
 	char key = cvWaitKey(1);
 	if (key == 27 || key == 13/*Esc lub Enter*/)
