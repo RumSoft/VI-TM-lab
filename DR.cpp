@@ -14,8 +14,8 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels);
 
 #define WINDOW_NAME "Obracanie obrazu"
 
-int degrees = 0;
-int change = 1;
+float degrees = 0;
+float change = 1;
 int dir = 1;
 
 int main()
@@ -52,7 +52,7 @@ int main()
 bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 {
 	degrees += dir * change;
-	float rot = degrees % 360 * 2 * M_PI / 180;
+	float rot = remainder(degrees, 360) * 2 * M_PI / 180;
 
 
 	/* Funkcja obracająca obraz peppersPixels o liczbę stopni zwiększaną o 1 przy każdym kolejnym wywołaniu.
@@ -95,8 +95,8 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 	if (key == '+') change += 1;
 	if (key == '-') change -= 1;
 
-	//nie szybciej niz 10, nie wolniej niz 1...
-	change = change >= 10 ? 10 : change <= 1 ? 1 : change;
+	//nie szybciej niz 10, nie wolniej niz 0.2...
+	change = change >= 10 ? 10 : change <= 0.2 ? 0.2 : change;
 
 	return false;
 }
