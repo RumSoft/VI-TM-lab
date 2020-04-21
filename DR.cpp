@@ -92,8 +92,8 @@ bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 	if (key == 27 || key == 13/*Esc lub Enter*/)
 		return true;
 	if (key == ' ') dir = -dir;
-	if (key == '+') change += 1;
-	if (key == '-') change -= 1;
+	if (key == '+') change *= 1.2;
+	if (key == '-') change *= 0.8;
 
 	//nie szybciej niz 10, nie wolniej niz 0.2...
 	change = change >= 10 ? 10 : change <= 0.2 ? 0.2 : change;
