@@ -1,6 +1,4 @@
-﻿#define _USE_MATH_DEFINES
-
-#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
+﻿#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>
 #include <stdio.h>
@@ -10,93 +8,55 @@
 using namespace std;
 using namespace cv;
 
-bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels);
-
-#define WINDOW_NAME "Obracanie obrazu"
-
-float degrees = 0;
-float change = 1;
-int dir = 1;
+void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels);
 
 int main()
 {
 	// Stworzenie okna w którym przechwycone obrazy będą wyświetlane
-	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
+	cvNamedWindow("Wykrywanie krawędzi", CV_WINDOW_AUTOSIZE);
 
 	// Pobranie obrazu
-	Mat im1 = imread("peppers.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat imagePeppers = imread("hand.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
-	// Utworzenie obiektu przechowującego obraz, który będzie obracany
-	Mat im2 = im1.clone();
+	// Utworzenie obiektu przechowującego obraz z wyznaczonymi krawędziami
+	Mat handEdgesMerged = imagePeppers.clone();
 
 	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
-	Mat_<uchar> im1pix = im1;
-	Mat_<uchar> im2pix = im2;
+	Mat_<uchar> handPixels = imagePeppers;
+	Mat_<uchar> handEdgesMergedPixels = handEdgesMerged;
 
-	while (true)
-	{
-		// Obracanie obrazu
+	// Wykrywanie krawędzi
+	detectEdges(handPixels, handEdgesMergedPixels);
 
-		if (Rotate(im1pix, im2pix))
-			break;
+	// Wyświetlanie obrazu
+	imshow("Wykrywanie krawędzi", handEdgesMerged);
 
-		// Wyświetlanie obrazu
-		imshow(WINDOW_NAME, im2);
-	}
+	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
+	char key;
+	do	key = cvWaitKey(1);
+	while (key != 27 && key != 13);
 
 	// Niszczenie okna
-	cvDestroyWindow(WINDOW_NAME);
+	cvDestroyWindow("Wykrywanie krawędzi");
 	return 0;
 }
 
-bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
+void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 {
-	degrees += dir * change;
-	float rot = remainder(degrees, 360) * 2 * M_PI / 180;
+	/* Funkcja wyznaczająca krawędzie za pomocą maski morfologicznej podanej przez prowadzącego.
+	Wyznaczane są najpierw krawędzie pionowe, później poziome. Następnie wykonywane jest scalenie
+	krawędzi pionowych i poziomych, przeskalowanie obrazu scalonego do zakresu 0-255 oraz binaryzacja
+	z eksperymentalnie dobranym progiem.
+	Wynikowy obraz zostaje zapisany w handEdgesMergedPixels.*/
 
+	// Utworzenie obiektów przechowujących obrazy z wyznaczonymi krawędziami: pionowymi i poziomymi
+	Mat handEdgesVertical = handPixels.clone();
+	Mat handEdgesHorizontal = handPixels.clone();
 
-	/* Funkcja obracająca obraz peppersPixels o liczbę stopni zwiększaną o 1 przy każdym kolejnym wywołaniu.
-	Kiedy liczba stopni dochodzi do 360, następuje powtórzenie cyklu - ustawienie liczbę stopni na 0.
-	Wynikowy obraz (obrócony) zostaje zapisywany w rotatedPeppersPixels. */
+	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
+	Mat_<int> handEdgesVerticalPixels = handEdgesVertical;
+	Mat_<int> handEdgesHorizontalPixels = handEdgesHorizontal;
 
-	for (auto y = 0; y < peppersPixels.rows; y++)
-		for (auto x = 0; x < peppersPixels.cols; x++)
-		{
-			int hy = peppersPixels.rows / 2;
-			int hx = peppersPixels.cols / 2;
-
-			int xx = (x - hx) * cos(rot) - (y - hy) * sin(rot) + hx;
-			int yy = (x - hx) * sin(rot) + (y - hy) * cos(rot) + hy;
-			if (yy >= peppersPixels.rows
-				|| xx >= peppersPixels.cols
-				|| yy < 0
-				|| xx < 0)
-			{
-				rotatedPeppersPixels[y][x] = 0;
-				continue;
-			}
-			rotatedPeppersPixels[y][x] = peppersPixels[yy][xx];
-		}
-
-	// nie potrzeba filtra, program z zad1 i zad2 nie miał dziur
-	// wyjasnienie:
-	// zamiast obraz źródłowy przetwarzać i uzyskiwać obrócone piksele zastosowano odwrotną operację:
-	// dla kazdego pikselu obrazu wynikowego oblicza się piksel z obrazu źródłowego
-	// unikamy w ten sposób błędów precyzji liczb zmiennoprzecinkowych, gdyż każdy piksel obrazu wynikowego
-	// będzie posiadał na pewno jakąś wartość
-	// #nomakeup #nofilter
-	medianBlur(rotatedPeppersPixels, rotatedPeppersPixels, 3);
-
-	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
-	char key = cvWaitKey(1);
-	if (key == 27 || key == 13/*Esc lub Enter*/)
-		return true;
-	if (key == ' ') dir = -dir;
-	if (key == '+') change *= 1.2;
-	if (key == '-') change *= 0.8;
-
-	//nie szybciej niz 10, nie wolniej niz 0.2...
-	change = change >= 10 ? 10 : change <= 0.2 ? 0.2 : change;
-
-	return false;
+	// TODO
 }
+
