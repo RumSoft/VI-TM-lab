@@ -10,7 +10,19 @@ using namespace cv;
 
 #define WINDOW_NAME "Wykrywanie krawędzi"
 
-void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels);
+void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold = -1);
+
+struct thresholdCallbackParams
+{
+	thresholdCallbackParams(Mat_<uchar>& in, Mat_<uchar>& out)
+	{
+		this->in = in;
+		this->out = out;
+	}
+
+	Mat_<uchar> in;
+	Mat_<uchar> out;
+};
 
 int main()
 {
@@ -21,27 +33,32 @@ int main()
 	Mat imagePeppers = imread("hand.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
 	// Utworzenie obiektu przechowującego obraz z wyznaczonymi krawędziami
-	Mat handEdgesMerged = imagePeppers.clone();
+	Mat out = imagePeppers.clone();
 
 	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
-	Mat_<uchar> handPixels = imagePeppers;
-	Mat_<uchar> handEdgesMergedPixels = handEdgesMerged;
-
+	Mat_<uchar> inPix = imagePeppers;
+	Mat_<uchar> outPix = out;
 
 	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
 	char key;
 
 	// Wykrywanie krawędzi
-	detectEdges(handPixels, handEdgesMergedPixels);
+	detectEdges(inPix, outPix);
 
 	// Wyświetlanie obrazu
-	imshow(WINDOW_NAME, handEdgesMerged);
+	imshow(WINDOW_NAME, out);
 
+	//trackbar z binaryzacją
+	createTrackbar("bin", WINDOW_NAME, nullptr, 254, [](int v, void* d)
+	{
+		auto data = *static_cast<thresholdCallbackParams*>(d);
+		detectEdges(data.in, data.out, v);
+		imshow(WINDOW_NAME, data.out);
+	}, new thresholdCallbackParams(inPix, outPix));
 
 	do
 		key = cvWaitKey(1);
 	while (key != 27 && key != 13);
-
 
 	// Niszczenie okna
 	cvDestroyWindow(WINDOW_NAME);
@@ -57,7 +74,7 @@ Wyznaczane są najpierw krawędzie pionowe, później poziome. Następnie wykony
 krawędzi pionowych i poziomych, przeskalowanie obrazu scalonego do zakresu 0-255 oraz binaryzacja
 z eksperymentalnie dobranym progiem.
 Wynikowy obraz zostaje zapisany w handEdgesMergedPixels.*/
-void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
+void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold)
 {
 	// Utworzenie obiektów przechowujących obrazy z wyznaczonymi krawędziami: pionowymi i poziomymi
 	Mat handEdgesVertical = handPixels.clone();
@@ -70,4 +87,8 @@ void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 	//złączenie i przeskalowanie złączonych obrazów do 0-255
 	//kr = scale[0-255](|kr_poz| + |kr_pion])  : 
 	normalize(abs(handEdgesVertical) + abs(handEdgesHorizontal), handEdgesMergedPixels, 0, 255, NORM_MINMAX);
+
+	//binaryzacja
+	if (binThreshold > 0)
+		threshold(handEdgesMergedPixels, handEdgesMergedPixels, binThreshold, 255, 0);
 }
