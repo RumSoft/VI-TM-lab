@@ -96,6 +96,6 @@ void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 			handEdgesHorizontalPixels[y][x] = edges(handPixels, maskHorizontal, y, x);
 		}
 
-	handEdgesMergedPixels = scale(abs(handEdgesVerticalPixels), 0, 255);
+	handEdgesMergedPixels = scale(abs(handEdgesHorizontalPixels) + abs(handEdgesVerticalPixels), 0, 255);
 }
 
