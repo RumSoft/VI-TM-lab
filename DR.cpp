@@ -8,8 +8,21 @@
 using namespace std;
 using namespace cv;
 
-void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels);
 #define WINDOW_NAME "wykrywanie krawedzi"
+
+
+void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold = -1);
+struct thresholdCallbackParams
+{
+	thresholdCallbackParams(Mat_<uchar>& in, Mat_<uchar>& out)
+	{
+		this->in = in;
+		this->out = out;
+	}
+
+	Mat_<uchar> in;
+	Mat_<uchar> out;
+};
 
 int main()
 {
@@ -32,9 +45,16 @@ int main()
 	// Wyświetlanie obrazu
 	imshow(WINDOW_NAME, handEdgesMerged);
 
+	createTrackbar("threshold", WINDOW_NAME, nullptr, 254, [](int v, void* d)
+	{
+		auto data = *static_cast<thresholdCallbackParams*>(d);
+		detectEdges(data.in, data.out, v);
+		imshow(WINDOW_NAME, data.out);
+	}, new thresholdCallbackParams(handPixels, handEdgesMergedPixels));
+
 	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
 	char key;
-	do	key = cvWaitKey(1);
+	do key = cvWaitKey(1);
 	while (key != 27 && key != 13);
 
 	// Niszczenie okna
@@ -50,7 +70,7 @@ int between(int min, int v, int max) { return v <= min ? min : v >= max ? max : 
 Mat_<int> maskVertical = (Mat_<int>(MASK_SIZE, MASK_SIZE) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
 Mat_<int> maskHorizontal = (Mat_<int>(MASK_SIZE, MASK_SIZE) << 1, 2, 1, 0, 0, 0, -1, -2, -1);
 
-void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
+void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold)
 {
 	/* Funkcja wyznaczająca krawędzie za pomocą maski morfologicznej podanej przez prowadzącego.
 	Wyznaczane są najpierw krawędzie pionowe, później poziome. Następnie wykonywane jest scalenie
@@ -66,8 +86,6 @@ void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 	Mat_<int> handEdgesVerticalPixels = handEdgesVertical;
 	Mat_<int> handEdgesHorizontalPixels = handEdgesHorizontal;
 
-	//metoda uzywana do replikacji krawędzi aaaa|abcdefg|gggg
-	
 	//metoda do obliczenia wartości piksela przy użyciu maski
 	auto edges = [](Mat_<uchar>& src, Mat_<int> mask, int y, int x) -> int
 	{
@@ -84,10 +102,17 @@ void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 	auto scale = [](Mat img, auto from, auto to) -> Mat
 	{
 		double min, max;
-		cv::minMaxLoc(img, &min, &max);
+		minMaxLoc(img, &min, &max);
 		return (img - min) * (to - from) / (max - min);
 	};
 
+	//binaryzacja
+	auto binarize = [](Mat_<uchar>& img, auto threshold)
+	{
+		for (int y = 0; y < img.rows; y++)
+			for (int x = 0; x < img.cols; x++)
+				img[y][x] = img[y][x] >= threshold ? 255 : 0;
+	};
 
 	for (int y = 0; y < handPixels.rows; y++)
 		for (int x = 0; x < handPixels.cols; x++)
@@ -97,5 +122,7 @@ void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels)
 		}
 
 	handEdgesMergedPixels = scale(abs(handEdgesHorizontalPixels) + abs(handEdgesVerticalPixels), 0, 255);
-}
 
+	if (binThreshold > 0)
+		binarize(handEdgesMergedPixels, binThreshold);
+}
