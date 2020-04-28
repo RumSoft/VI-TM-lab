@@ -1,4 +1,6 @@
-﻿#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
+﻿#define _USE_MATH_DEFINES
+
+#include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>
 #include <stdio.h>
@@ -8,121 +10,71 @@
 using namespace std;
 using namespace cv;
 
-#define WINDOW_NAME "wykrywanie krawedzi"
+bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels);
 
+#define WINDOW_NAME "Obracanie obrazu"
 
-void detectEdges(Mat_<uchar>& peppersPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold = -1);
-struct thresholdCallbackParams
-{
-	thresholdCallbackParams(Mat_<uchar>& in, Mat_<uchar>& out)
-	{
-		this->in = in;
-		this->out = out;
-	}
-
-	Mat_<uchar> in;
-	Mat_<uchar> out;
-};
-
+int degrees = 0;
 int main()
 {
 	// Stworzenie okna w którym przechwycone obrazy będą wyświetlane
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
 	// Pobranie obrazu
-	Mat imagePeppers = imread("hand.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat im1 = imread("peppers.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
-	// Utworzenie obiektu przechowującego obraz z wyznaczonymi krawędziami
-	Mat handEdgesMerged = imagePeppers.clone();
+	// Utworzenie obiektu przechowującego obraz, który będzie obracany
+	Mat im2 = im1.clone();
 
 	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
-	Mat_<uchar> handPixels = imagePeppers;
-	Mat_<uchar> handEdgesMergedPixels = handEdgesMerged;
+	Mat_<uchar> im1pix = im1;
+	Mat_<uchar> im2pix = im2;
 
-	// Wykrywanie krawędzi
-	detectEdges(handPixels, handEdgesMergedPixels);
-
-	// Wyświetlanie obrazu
-	imshow(WINDOW_NAME, handEdgesMerged);
-
-	createTrackbar("threshold", WINDOW_NAME, nullptr, 254, [](int v, void* d)
+	while (1)
 	{
-		auto data = *static_cast<thresholdCallbackParams*>(d);
-		detectEdges(data.in, data.out, v);
-		imshow(WINDOW_NAME, data.out);
-	}, new thresholdCallbackParams(handPixels, handEdgesMergedPixels));
+		// Obracanie obrazu
+		if (Rotate(im1pix, im2pix))
+			break;
 
-	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
-	char key;
-	do key = cvWaitKey(1);
-	while (key != 27 && key != 13);
+		// Wyświetlanie obrazu
+		imshow(WINDOW_NAME, im2);
+	}
 
 	// Niszczenie okna
-	cvDestroyWindow("Wykrywanie krawędzi");
+	cvDestroyWindow(WINDOW_NAME);
 	return 0;
 }
 
-//metoda uzywana do replikacji krawędzi aaaa|abcdefg|gggg
-//ogranicza wybierany indeks elementu w tablicy do wartości  min <= val <= max
-int between(int min, int v, int max) { return v <= min ? min : v >= max ? max : v; }
-
-#define MASK_SIZE 3
-Mat_<int> maskVertical = (Mat_<int>(MASK_SIZE, MASK_SIZE) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
-Mat_<int> maskHorizontal = (Mat_<int>(MASK_SIZE, MASK_SIZE) << 1, 2, 1, 0, 0, 0, -1, -2, -1);
-
-void detectEdges(Mat_<uchar>& handPixels, Mat_<uchar>& handEdgesMergedPixels, int binThreshold)
+bool Rotate(Mat_<uchar>& peppersPixels, Mat_<uchar>& rotatedPeppersPixels)
 {
-	/* Funkcja wyznaczająca krawędzie za pomocą maski morfologicznej podanej przez prowadzącego.
-	Wyznaczane są najpierw krawędzie pionowe, później poziome. Następnie wykonywane jest scalenie
-	krawędzi pionowych i poziomych, przeskalowanie obrazu scalonego do zakresu 0-255 oraz binaryzacja
-	z eksperymentalnie dobranym progiem.
-	Wynikowy obraz zostaje zapisany w handEdgesMergedPixels.*/
 
-	// Utworzenie obiektów przechowujących obrazy z wyznaczonymi krawędziami: pionowymi i poziomymi
-	Mat handEdgesVertical = handPixels.clone();
-	Mat handEdgesHorizontal = handPixels.clone();
+	/* Funkcja obracająca obraz peppersPixels o liczbę stopni zwiększaną o 1 przy każdym kolejnym wywołaniu.
+	Kiedy liczba stopni dochodzi do 360, następuje powtórzenie cyklu - ustawienie liczbę stopni na 0.
+	Wynikowy obraz (obrócony) zostaje zapisywany w rotatedPeppersPixels. */
+	degrees += 1;
 
-	// Uzyskanie macierzy pikseli na podstawie obiektów Mat
-	Mat_<int> handEdgesVerticalPixels = handEdgesVertical;
-	Mat_<int> handEdgesHorizontalPixels = handEdgesHorizontal;
-
-	//metoda do obliczenia wartości piksela przy użyciu maski
-	auto edges = [](Mat_<uchar>& src, Mat_<int> mask, int y, int x) -> int
-	{
-		//s - suma pikseli dookoła,
-		//r - radius - promień maski (dla 3x3 promieniem jest 1, 5x5 -> 2, itd..)
-		int s = 0, r = MASK_SIZE / 2;
-		for (int i = -r; i <= r; ++i)
-			for (int j = -r; j <= r; ++j)
-				s += src[between(0, y + i, src.rows - 1)][between(0, x + j, src.cols - 1)] * mask[i + r][j + r];
-		return s;
-	};
-
-	//s(z)kalowanie tak jak podano w pdf-ie 
-	auto scale = [](Mat img, auto from, auto to) -> Mat
-	{
-		double min, max;
-		minMaxLoc(img, &min, &max);
-		return (img - min) * (to - from) / (max - min);
-	};
-
-	//binaryzacja
-	auto binarize = [](Mat_<uchar>& img, auto threshold)
-	{
-		for (int y = 0; y < img.rows; y++)
-			for (int x = 0; x < img.cols; x++)
-				img[y][x] = img[y][x] >= threshold ? 255 : 0;
-	};
-
-	for (int y = 0; y < handPixels.rows; y++)
-		for (int x = 0; x < handPixels.cols; x++)
+	for (auto y = 0; y < peppersPixels.rows; y++)
+		for (auto x = 0; x < peppersPixels.cols; x++)
 		{
-			handEdgesVerticalPixels[y][x] = edges(handPixels, maskVertical, y, x);
-			handEdgesHorizontalPixels[y][x] = edges(handPixels, maskHorizontal, y, x);
+			float rot = degrees % 360 * 2 * M_PI / 180;
+			int xx = x * cos(rot) - y * sin(rot);
+			int yy = x * sin(rot) + y * cos(rot);
+			if (yy >= peppersPixels.rows
+				|| xx >= peppersPixels.cols
+				|| yy < 0
+				|| xx < 0) {
+				rotatedPeppersPixels[y][x] = 0;
+				continue;
+			}
+			rotatedPeppersPixels[y][x] = peppersPixels[yy][xx];
 		}
 
-	handEdgesMergedPixels = scale(abs(handEdgesHorizontalPixels) + abs(handEdgesVerticalPixels), 0, 255);
 
-	if (binThreshold > 0)
-		binarize(handEdgesMergedPixels, binThreshold);
+	// Oczekiwanie na wciśnięcie klawisza Esc lub Enter
+	char key = cvWaitKey(1);
+	if (key == 27 || key == 13/*Esc lub Enter*/)
+		return true;
+
+	return false;
 }
+
