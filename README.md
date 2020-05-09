@@ -1,5 +1,5 @@
 # VI-TM-lab
-VI: Multimedia technology lab  (image/audio processing excercises)
+VI: Multimedia technology labs  (image/audio processing excercises)
 
 ### OpenCV:
 **cw1**: image crossfade  
